@@ -18,13 +18,18 @@ import json
 import time
 from lxml import etree
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from matplotlib import rc
 
 
 class jobsSpider():
     def __init__(self, city, kd, file_name):
         self.file_name = file_name
-        self.wb = webdriver.Chrome(executable_path=r'C:\Users\YJSP\PycharmProjects\py-projects\spiders\chromedriver.exe')
+        # 使用无界面调试
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--disable-gpu')
+        self.wb = webdriver.Chrome(executable_path=r'C:\Users\YJSP\PycharmProjects\py-projects\spiders\chromedriver.exe', chrome_options=chrome_options)
         url = 'https://www.lagou.com/jobs/list_{kd}?px=default&city={city}'.format(kd=kd, city=city)
         self.wb.get(url)
         self.data = {
@@ -58,7 +63,10 @@ class jobsSpider():
 
     def getData(self):
         time.sleep(2)
+        print(self.wb.current_url)
         source = self.wb.page_source
+        # with open('t.html', 'w') as f:
+        #     f.writelines(source)
         html = etree.HTML(source)
         next_page_class = html.xpath('//span[text()="下一页"]/@class')
         if next_page_class:
@@ -69,6 +77,8 @@ class jobsSpider():
         else:
             self.dataParse(html)
             self.saveJson(self.data, self.file_name)
+            self.wb.close()
+            self.wb.quit()
             return
 
     @staticmethod
@@ -108,6 +118,7 @@ def start():
     file_name = input('请输入json文件名：')
     j = jobsSpider(city=city, kd=job, file_name=file_name)
     j.getData()
+    draw(file_name, job)
 
 
 def draw(file_name, job_name):
@@ -118,6 +129,7 @@ def draw(file_name, job_name):
     }
     rc('font', **font)
     df = pd.read_csv('./'+file_name+'.csv')
+    print(df)
     company = df['company_name'].value_counts()[:5]
     arr_len = len(company)
     fig = plt.figure(figsize=(30, 20), dpi=80)
@@ -219,9 +231,8 @@ def start_draw():
 
 
 def main():
-    # start()
-    # 由于pandas写入csv第一个字符是,无法进行一键运行
-    start_draw()
+    start()
+
 
 if __name__ == '__main__':
     main()
